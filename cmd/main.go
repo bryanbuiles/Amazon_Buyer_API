@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	mux := router.SetupData()
+	mux := router.Routes()
 	server := newServer(mux)
 	server.Run()
 }

@@ -1,14 +1,14 @@
 package router
 
 import (
-	"github.com/bryanbuiles/tecnical_interview/api/consumer/gateway"
+	"github.com/bryanbuiles/tecnical_interview/api/V1/gateway"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 )
 
-// SetupData to setup the buyer, product and transaction data
-func SetupData() *chi.Mux {
+// Routes to setup the buyer, product and transaction data
+func Routes() *chi.Mux {
 	mux := chi.NewMux()
 	star := gateway.Start()
 	mux.Use(

@@ -23,7 +23,7 @@ func newServer(mux *chi.Mux) *MyServer {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-	logs.Info("Api is running is port 3000")
+	logs.Info("Api is running in port 3000")
 	return &MyServer{s}
 }
 
