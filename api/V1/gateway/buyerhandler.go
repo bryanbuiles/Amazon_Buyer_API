@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -15,7 +14,6 @@ func (c *WebServices) ConsumerDateHandler(w http.ResponseWriter, r *http.Request
 		_ = json.NewEncoder(w).Encode(m)
 		return
 	}
-	fmt.Println("res in handler", res)
 	_ = json.NewEncoder(w).Encode(res)
 
 }

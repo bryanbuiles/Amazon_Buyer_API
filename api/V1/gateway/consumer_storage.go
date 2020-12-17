@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/bryanbuiles/tecnical_interview/api/consumer/models"
+	"github.com/bryanbuiles/tecnical_interview/api/V1/models"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
 )
 
@@ -13,13 +13,17 @@ type BuyerGateway interface {
 	ConsumerData() ([]models.Consumer, error)
 }
 
+// BuyerService ...
+type BuyerService struct {
+}
+
 const (
 	// URL for amazon api
 	URL = "https://kqxty15mpg.execute-api.us-east-1.amazonaws.com/"
 )
 
 // ConsumerData ...
-func ConsumerData() ([]models.Consumer, error) {
+func (buyer *BuyerService) ConsumerData() ([]models.Consumer, error) {
 	res, err := http.Get(URL + "buyers")
 	if err != nil {
 		logs.Error("http get fail at COnsumerData " + err.Error())

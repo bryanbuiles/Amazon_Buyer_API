@@ -1,18 +1,24 @@
 package router
 
 import (
-	"fmt"
-
 	"github.com/bryanbuiles/tecnical_interview/api/consumer/gateway"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
 )
 
 // SetupData to setup the buyer, product and transaction data
-func SetupData(app *chi.Mux) {
-	fmt.Println("entro")
+func SetupData() *chi.Mux {
+	mux := chi.NewMux()
 	star := gateway.Start()
-	app.Route("/load", func(r chi.Router) {
-
-		r.Get("/", star.ConsumerDateHandler)
-	})
+	mux.Use(
+		middleware.Logger,    //log every http request
+		middleware.Recoverer, // recover if a panic occurs
+		cors.Handler(cors.Options{
+			AllowedMethods: []string{"GET", "POST"},
+			AllowedOrigins: []string{"*"},
+		}),
+	)
+	mux.Get("/load", star.ConsumerDateHandler)
+	return mux
 }
