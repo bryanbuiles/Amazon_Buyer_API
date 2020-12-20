@@ -2,7 +2,7 @@ package gateway
 
 // Services ...
 type Services struct {
-	buyers BuyerGateway
+	data AllDataGateway
 }
 
 // WebServices .for the users
@@ -13,7 +13,7 @@ type WebServices struct {
 // NewServices ...
 func NewServices() Services {
 	return Services{
-		buyers: &BuyerService{},
+		data: &DataBaseService{},
 	}
 }
 

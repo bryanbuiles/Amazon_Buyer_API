@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/bryanbuiles/tecnical_interview/api/V1/gateway"
+	"github.com/bryanbuiles/tecnical_interview/api/v1/gateway"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -19,6 +19,6 @@ func Routes() *chi.Mux {
 			AllowedOrigins: []string{"*"},
 		}),
 	)
-	mux.Get("/load", star.ConsumerDateHandler)
+	mux.Get("/load", star.DataHandler)
 	return mux
 }
