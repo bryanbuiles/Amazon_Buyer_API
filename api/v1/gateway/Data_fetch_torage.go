@@ -80,7 +80,7 @@ func (DB *DataBaseService) ProductData(date string) ([]models.Product, error) {
 	var _products []models.Product
 	for {
 		line, err := resCsv.Read()
-		if err == io.EOF {
+		if err == io.EOF { // end of the file
 			break
 		}
 		if line != nil {
