@@ -44,7 +44,7 @@ func conversorToUnix(date string) string {
 }
 
 // ConsumerData ...
-func (DB *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) {
+func (D *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) {
 
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "buyers?date=" + date)
@@ -55,8 +55,16 @@ func (DB *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) 
 	}
 	defer res.Body.Close()
 	var _consumer []models.Consumer
-
+	var consumer models.Consumer
 	err = json.NewDecoder(res.Body).Decode(&_consumer)
+	for index, values := range _consumer {
+		consumer.UID = "_:blank"
+		consumer.ID = values.ID
+		consumer.Age = values.Age
+		consumer.Name = values.Name
+		consumer.Dtype = []string{"Consumer"}
+		_consumer[index] = consumer
+	}
 	if err != nil {
 		logs.Error("Decode buyers fails " + err.Error())
 		return nil, err
@@ -65,7 +73,7 @@ func (DB *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) 
 }
 
 // ProductData ...
-func (DB *DataBaseService) ProductData(date string) ([]models.Product, error) {
+func (D *DataBaseService) ProductData(date string) ([]models.Product, error) {
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "products?date=" + date)
 
@@ -84,9 +92,11 @@ func (DB *DataBaseService) ProductData(date string) ([]models.Product, error) {
 			break
 		}
 		if line != nil {
+			product.UID = "_:blank"
 			product.ID = line[0]
 			product.Name = line[1]
 			product.Price, _ = strconv.Atoi(line[2])
+			product.Dtype = []string{"Product"}
 			_products = append(_products, product)
 		}
 		if err != nil {
@@ -98,7 +108,7 @@ func (DB *DataBaseService) ProductData(date string) ([]models.Product, error) {
 }
 
 // TransactionData ...
-func (DB *DataBaseService) TransactionData(date string) ([]models.Transaction, error) {
+func (D *DataBaseService) TransactionData(date string) ([]models.Transaction, error) {
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "transactions?date=" + date)
 
@@ -122,12 +132,13 @@ func (DB *DataBaseService) TransactionData(date string) ([]models.Transaction, e
 		}
 		// \x00 null terminator - carriage returns or line-feeds
 		transactionElements := strings.Split(element, "\x00")
-
+		transaction.UID = "_:blank"
 		transaction.ID = transactionElements[0]
 		transaction.BuyerID = transactionElements[1]
 		transaction.IP = transactionElements[2]
 		transaction.Device = transactionElements[3]
-		transaction.ProductIds = strings.Split(transactionElements[4][1:len(transactionElements[4])-1], ",")
+		transaction.ProductIDs = strings.Split(transactionElements[4][1:len(transactionElements[4])-1], ",")
+		transaction.Dtype = []string{"Transaction"}
 		_transactions = append(_transactions, transaction)
 	}
 	return _transactions, nil

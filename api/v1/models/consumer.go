@@ -2,7 +2,9 @@ package models
 
 // Consumer struct for buyers
 type Consumer struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
+	UID   string   `json:"uid,omitempty"`
+	ID    string   `json:"id,omitempty"`
+	Name  string   `json:"name"`
+	Age   int      `json:"age"`
+	Dtype []string `json:"dgraph.type,omitempty"`
 }

@@ -2,7 +2,9 @@ package models
 
 // Product struct
 type Product struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Price int    `json:"price"`
+	UID   string   `json:"uid,omitempty"`
+	ID    string   `json:"id,omitempty"`
+	Name  string   `json:"name"`
+	Price int      `json:"price"`
+	Dtype []string `json:"dgraph.type,omitempty"`
 }
