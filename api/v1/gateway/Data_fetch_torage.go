@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -11,18 +12,21 @@ import (
 	"time"
 
 	"github.com/bryanbuiles/tecnical_interview/api/v1/models"
+	"github.com/bryanbuiles/tecnical_interview/internal/database"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
+	"github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 // AllDataGateway al methodos of Buyers user
 type AllDataGateway interface {
-	ConsumerData(date string) ([]models.Consumer, error)
-	ProductData(date string) ([]models.Product, error)
+	ConsumerData(date string) (map[string]string, error)
+	ProductData(date string) (map[string]string, error)
 	TransactionData(date string) ([]models.Transaction, error)
 }
 
 // DataBaseService retrieve database conection
 type DataBaseService struct {
+	DB *database.DgraphClient
 }
 
 const (
@@ -44,7 +48,7 @@ func conversorToUnix(date string) string {
 }
 
 // ConsumerData ...
-func (D *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) {
+func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "buyers?date=" + date)
@@ -57,6 +61,11 @@ func (D *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) {
 	var _consumer []models.Consumer
 	var consumer models.Consumer
 	err = json.NewDecoder(res.Body).Decode(&_consumer)
+	if err != nil {
+		logs.Error("Decode buyers fails " + err.Error())
+		return nil, err
+	}
+
 	for index, values := range _consumer {
 		consumer.UID = "_:blank"
 		consumer.ID = values.ID
@@ -65,15 +74,37 @@ func (D *DataBaseService) ConsumerData(date string) ([]models.Consumer, error) {
 		consumer.Dtype = []string{"Consumer"}
 		_consumer[index] = consumer
 	}
-	if err != nil {
-		logs.Error("Decode buyers fails " + err.Error())
-		return nil, err
+
+	// filter data
+	consumers, err := filterConsumer(D.DB, _consumer)
+
+	// saving data
+
+	mapConsumer := make(map[string]string)
+	ctx := context.Background()
+	mu := &api.Mutation{
+		CommitNow: true,
 	}
-	return _consumer, nil
+	for _, newvalues := range consumers {
+		pb, err := json.Marshal(newvalues)
+		if err != nil {
+			logs.Error("Consumer marshall fail at ConsumerData " + err.Error())
+			return nil, err
+		}
+		mu.SetJson = pb
+		response, err := D.DB.NewTxn().Mutate(ctx, mu)
+		if err != nil {
+			logs.Error("Error saving Data in Consumer " + err.Error())
+			return nil, err
+		}
+		mapConsumer[newvalues.ID] = response.Uids["blank"]
+	}
+
+	return mapConsumer, nil
 }
 
 // ProductData ...
-func (D *DataBaseService) ProductData(date string) ([]models.Product, error) {
+func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "products?date=" + date)
 
@@ -104,7 +135,27 @@ func (D *DataBaseService) ProductData(date string) ([]models.Product, error) {
 			return nil, err
 		}
 	}
-	return _products, nil
+	mapProduct := make(map[string]string)
+	products, err := filterProduct(D.DB, _products)
+	ctx := context.Background()
+	mu := &api.Mutation{
+		CommitNow: true,
+	}
+	for _, newValues := range products {
+		pb, err := json.Marshal(newValues)
+		if err != nil {
+			logs.Error("Product marshall fail at ConsumerData " + err.Error())
+			return nil, err
+		}
+		mu.SetJson = pb
+		response, err := D.DB.NewTxn().Mutate(ctx, mu)
+		if err != nil {
+			logs.Error("Error saving Data in Products " + err.Error())
+			return nil, err
+		}
+		mapProduct[newValues.ID] = response.Uids["blank"]
+	}
+	return mapProduct, nil
 }
 
 // TransactionData ...

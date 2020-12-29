@@ -1,5 +1,9 @@
 package gateway
 
+import (
+	"github.com/bryanbuiles/tecnical_interview/internal/database"
+)
+
 // Services ...
 type Services struct {
 	data AllDataGateway
@@ -12,8 +16,9 @@ type WebServices struct {
 
 // NewServices ...
 func NewServices() Services {
+	client := database.NewClient()
 	return Services{
-		data: &DataBaseService{},
+		data: &DataBaseService{DB: client},
 	}
 }
 
