@@ -7,7 +7,6 @@ import (
 	"github.com/bryanbuiles/tecnical_interview/api/v1/models"
 	"github.com/bryanbuiles/tecnical_interview/internal/database"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
-	"github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 type filterConsumerStruct struct {
@@ -93,12 +92,38 @@ func filterProduct(DB *database.DgraphClient, productData []models.Product) ([]m
 	return _products, nil
 }
 
-// DropData Drop database but keep schema
-func DropData(DB *database.DgraphClient) error {
-	op := api.Operation{DropOp: api.Operation_DATA}
-	err := DB.Alter(context.Background(), &op)
+func filterTransaction(DB *database.DgraphClient, transactionData []models.Transaction) ([]models.Transaction, error) {
+	ctx := context.Background()
+	q := `{
+			allData(func: type(Transaction)) {
+				uid
+				id
+			}
+		}`
+
+	txn := DB.NewTxn()
+	defer txn.Discard(ctx)
+	response, err := txn.Query(ctx, q)
 	if err != nil {
-		return err
+		logs.Error("Transaction fails at filterProduct " + err.Error())
+		return nil, err
 	}
-	return nil
+	var transactionExist *filterDataResponse
+	err = json.Unmarshal([]byte(response.Json), &transactionExist)
+	if err != nil {
+		logs.Error("Unmarshall fails at filterTransaction " + err.Error())
+		return nil, err
+	}
+
+	allTransactionExist := transactionExist.AllData
+	for index, values := range transactionData {
+		for _, ValuesExists := range allTransactionExist {
+			if values.ID == ValuesExists.ID {
+				values.UID = ValuesExists.UID
+				transactionData[index] = values
+				break
+			}
+		}
+	}
+	return transactionData, nil
 }

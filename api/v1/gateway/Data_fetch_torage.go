@@ -21,7 +21,7 @@ import (
 type AllDataGateway interface {
 	ConsumerData(date string) (map[string]string, error)
 	ProductData(date string) (map[string]string, error)
-	TransactionData(date string) ([]models.Transaction, error)
+	TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error
 }
 
 // DataBaseService retrieve database conection
@@ -71,7 +71,7 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 		consumer.ID = values.ID
 		consumer.Age = values.Age
 		consumer.Name = values.Name
-		consumer.Dtype = []string{"Consumer"}
+		consumer.DType = []string{"Consumer"}
 		_consumer[index] = consumer
 	}
 
@@ -97,7 +97,11 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 			logs.Error("Error saving Data in Consumer " + err.Error())
 			return nil, err
 		}
-		mapConsumer[newvalues.ID] = response.Uids["blank"]
+		if newvalues.UID != "_:blank" {
+			mapConsumer[newvalues.ID] = newvalues.UID
+		} else {
+			mapConsumer[newvalues.ID] = response.Uids["blank"]
+		}
 	}
 
 	return mapConsumer, nil
@@ -127,7 +131,7 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 			product.ID = line[0]
 			product.Name = line[1]
 			product.Price, _ = strconv.Atoi(line[2])
-			product.Dtype = []string{"Product"}
+			product.DType = []string{"Product"}
 			_products = append(_products, product)
 		}
 		if err != nil {
@@ -153,44 +157,72 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 			logs.Error("Error saving Data in Products " + err.Error())
 			return nil, err
 		}
-		mapProduct[newValues.ID] = response.Uids["blank"]
+		if newValues.UID != "_:blank" {
+			mapProduct[newValues.ID] = newValues.UID
+		} else {
+			mapProduct[newValues.ID] = response.Uids["blank"]
+		}
 	}
 	return mapProduct, nil
 }
 
 // TransactionData ...
-func (D *DataBaseService) TransactionData(date string) ([]models.Transaction, error) {
+func (D *DataBaseService) TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error {
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "transactions?date=" + date)
-
 	if err != nil {
 		logs.Error("http get fail at TransactionDataData " + err.Error())
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 	resbythes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		logs.Error("Fail read lines in Transaction " + err.Error())
-		return nil, err
+		return err
 	}
 	transactions := strings.Split(string(resbythes), "#")
 	var transaction models.Transaction
+	var transactionsUIDS models.UIDTransaction
+	var transactionsUIDSListProduct []models.UIDTransaction
 	var _transactions []models.Transaction
 	for index, element := range transactions {
-
+		transactionsUIDSListProduct = nil
 		if index == 0 {
 			continue
 		}
 		// \x00 null terminator - carriage returns or line-feeds
 		transactionElements := strings.Split(element, "\x00")
-		transaction.UID = "_:blank"
 		transaction.ID = transactionElements[0]
-		transaction.BuyerID = transactionElements[1]
+		transactionsUIDS.UID = consumerMap[transactionElements[1]]
+		transactionsUIDS.DType = []string{"Consumer"}
+		transaction.BuyerID = []models.UIDTransaction{transactionsUIDS}
 		transaction.IP = transactionElements[2]
 		transaction.Device = transactionElements[3]
-		transaction.ProductIDs = strings.Split(transactionElements[4][1:len(transactionElements[4])-1], ",")
-		transaction.Dtype = []string{"Transaction"}
+		productsList := strings.Split(transactionElements[4][1:len(transactionElements[4])-1], ",")
+		for _, values := range productsList {
+			transactionsUIDS.UID = productMap[values]
+			transactionsUIDS.DType = []string{"Product"}
+			transactionsUIDSListProduct = append(transactionsUIDSListProduct, transactionsUIDS)
+		}
+		transaction.ProductIDs = transactionsUIDSListProduct
+		transaction.DType = []string{"Transaction"}
 		_transactions = append(_transactions, transaction)
 	}
-	return _transactions, nil
+	result, err := filterTransaction(D.DB, _transactions)
+	ctx := context.Background()
+	txn := D.DB.NewTxn()
+	pb, err := json.Marshal(result)
+	if err != nil {
+		logs.Error("Transaction marshall fail at TransactionData " + err.Error())
+		return err
+	}
+	mu := &api.Mutation{
+		SetJson: pb,
+	}
+	mu.CommitNow = true
+	_, err = txn.Mutate(ctx, mu)
+	if err != nil {
+		return err
+	}
+	return nil
 }

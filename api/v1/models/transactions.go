@@ -2,11 +2,17 @@ package models
 
 // Transaction struct
 type Transaction struct {
-	UID        string   `json:"uid,omitempty"`
-	ID         string   `json:"id,omitempty"`
-	BuyerID    string   `json:"buyerID,omitempty"`
-	IP         string   `json:"ip"`
-	Device     string   `json:"device"`
-	ProductIDs []string `json:"productIDs,omitempty"`
-	Dtype      []string `json:"dgraph.type,omitempty"`
+	UID        string           `json:"uid,omitempty"`
+	ID         string           `json:"id,omitempty"`
+	BuyerID    []UIDTransaction `json:"buyerID,omitempty"`
+	IP         string           `json:"ip,omitempty"`
+	Device     string           `json:"device,omitempty"`
+	ProductIDs []UIDTransaction `json:"productIDs,omitempty"`
+	DType      []string         `json:"dgraph.type,omitempty"`
+}
+
+// UIDTransaction ...
+type UIDTransaction struct {
+	UID   string   `json:"uid"`
+	DType []string `json:"dgraph.type,omitempty"`
 }

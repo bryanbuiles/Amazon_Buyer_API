@@ -38,21 +38,24 @@ func SetpUpSheme() {
 	client := dgo.NewDgraphClient(
 		api.NewDgraphClient(d),
 	)
+	//DropData(client)
 	op := &api.Operation{}
 	op.Schema = `
 		id: string @index(exact) .
 		name: string .
 		age: int .
 		price: int .
-		buyerID: [uid] .
+		buyerID: [uid] @reverse .
 		ip: string @index(hash) .
 		device: string @index(hash) .
-		productIDs: [uid] .
+		productIDs: [uid] @reverse .
+		purchases: [uid] .
 
 		type Consumer {
 			id
 			name
 			age
+			purchases
 		}
 
 		type Product {
@@ -75,4 +78,14 @@ func SetpUpSheme() {
 	} else {
 		logs.Info("scheme succes set")
 	}
+}
+
+// DropData Drop database but keep schema
+func DropData(DB *dgo.Dgraph) error {
+	op := api.Operation{DropOp: api.Operation_DATA}
+	err := DB.Alter(context.Background(), &op)
+	if err != nil {
+		return err
+	}
+	return nil
 }

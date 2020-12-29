@@ -9,15 +9,15 @@ import (
 func (c *WebServices) DataHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	Date := r.URL.Query().Get("date") // query url parameter
-	_, err := c.data.ConsumerData(Date)
+	consumerMap, err := c.data.ConsumerData(Date)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		m := map[string]interface{}{"message": "error pasing data in buyer"}
 		_ = json.NewEncoder(w).Encode(m)
 		return
 	}
-	_, err = c.data.ProductData(Date)
-	//res, err := c.data.TransactionData(Date)
+	productMap, err := c.data.ProductData(Date)
+	err = c.data.TransactionData(Date, consumerMap, productMap)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		m := map[string]interface{}{"message": "error pasing data"}
@@ -27,6 +27,5 @@ func (c *WebServices) DataHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	resMap := map[string]interface{}{"msg": "Data saved successfully"}
 	_ = json.NewEncoder(w).Encode(resMap)
-	//_ = json.NewEncoder(w).Encode(res)
 
 }
