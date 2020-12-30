@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"context"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -14,7 +13,6 @@ import (
 	"github.com/bryanbuiles/tecnical_interview/api/v1/models"
 	"github.com/bryanbuiles/tecnical_interview/internal/database"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
-	"github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 // AllDataGateway al methodos of Buyers user
@@ -66,12 +64,13 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 		return nil, err
 	}
 
+	mapConsumer := make(map[string]string)
 	for index, values := range _consumer {
-		consumer.UID = "_:blank"
 		consumer.ID = values.ID
 		consumer.Age = values.Age
 		consumer.Name = values.Name
 		consumer.DType = []string{"Consumer"}
+		mapConsumer[values.ID] = ""
 		_consumer[index] = consumer
 	}
 
@@ -80,30 +79,16 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 
 	// saving data
 
-	mapConsumer := make(map[string]string)
-	ctx := context.Background()
-	mu := &api.Mutation{
-		CommitNow: true,
+	pb, err := json.Marshal(consumers)
+	if err != nil {
+		logs.Error("Consumer marshall fail at ConsumerData " + err.Error())
+		return nil, err
 	}
-	for _, newvalues := range consumers {
-		pb, err := json.Marshal(newvalues)
-		if err != nil {
-			logs.Error("Consumer marshall fail at ConsumerData " + err.Error())
-			return nil, err
-		}
-		mu.SetJson = pb
-		response, err := D.DB.NewTxn().Mutate(ctx, mu)
-		if err != nil {
-			logs.Error("Error saving Data in Consumer " + err.Error())
-			return nil, err
-		}
-		if newvalues.UID != "_:blank" {
-			mapConsumer[newvalues.ID] = newvalues.UID
-		} else {
-			mapConsumer[newvalues.ID] = response.Uids["blank"]
-		}
+	err = SaveData(D.DB, pb)
+	if err != nil {
+		logs.Error("Consumer Save Data fail " + err.Error())
+		return nil, err
 	}
-
 	return mapConsumer, nil
 }
 
@@ -121,17 +106,18 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 	resCsv.Comma = '\''
 	var product models.Product
 	var _products []models.Product
+	mapProduct := make(map[string]string)
 	for {
 		line, err := resCsv.Read()
 		if err == io.EOF { // end of the file
 			break
 		}
 		if line != nil {
-			product.UID = "_:blank"
 			product.ID = line[0]
 			product.Name = line[1]
 			product.Price, _ = strconv.Atoi(line[2])
 			product.DType = []string{"Product"}
+			mapProduct[line[0]] = ""
 			_products = append(_products, product)
 		}
 		if err != nil {
@@ -139,35 +125,32 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 			return nil, err
 		}
 	}
-	mapProduct := make(map[string]string)
+	//filter data
 	products, err := filterProduct(D.DB, _products)
-	ctx := context.Background()
-	mu := &api.Mutation{
-		CommitNow: true,
+
+	// saving data
+
+	pb, err := json.Marshal(products)
+	if err != nil {
+		logs.Error("Product marshall fail at ConsumerData " + err.Error())
+		return nil, err
 	}
-	for _, newValues := range products {
-		pb, err := json.Marshal(newValues)
-		if err != nil {
-			logs.Error("Product marshall fail at ConsumerData " + err.Error())
-			return nil, err
-		}
-		mu.SetJson = pb
-		response, err := D.DB.NewTxn().Mutate(ctx, mu)
-		if err != nil {
-			logs.Error("Error saving Data in Products " + err.Error())
-			return nil, err
-		}
-		if newValues.UID != "_:blank" {
-			mapProduct[newValues.ID] = newValues.UID
-		} else {
-			mapProduct[newValues.ID] = response.Uids["blank"]
-		}
+	err = SaveData(D.DB, pb)
+	if err != nil {
+		logs.Error("Product Save Data fail " + err.Error())
+		return nil, err
 	}
 	return mapProduct, nil
 }
 
 // TransactionData ...
 func (D *DataBaseService) TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error {
+	consumerMap, productMap, err := TransactionUIDS(D.DB, consumerMap, productMap)
+	if err != nil {
+		logs.Error("TransactionUIDS fail " + err.Error())
+		return err
+	}
+
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "transactions?date=" + date)
 	if err != nil {
@@ -180,6 +163,7 @@ func (D *DataBaseService) TransactionData(date string, consumerMap map[string]st
 		logs.Error("Fail read lines in Transaction " + err.Error())
 		return err
 	}
+
 	transactions := strings.Split(string(resbythes), "#")
 	var transaction models.Transaction
 	var transactionsUIDS models.UIDTransaction
@@ -208,20 +192,17 @@ func (D *DataBaseService) TransactionData(date string, consumerMap map[string]st
 		transaction.DType = []string{"Transaction"}
 		_transactions = append(_transactions, transaction)
 	}
+	// filter data
 	result, err := filterTransaction(D.DB, _transactions)
-	ctx := context.Background()
-	txn := D.DB.NewTxn()
+	// saving data
 	pb, err := json.Marshal(result)
 	if err != nil {
 		logs.Error("Transaction marshall fail at TransactionData " + err.Error())
 		return err
 	}
-	mu := &api.Mutation{
-		SetJson: pb,
-	}
-	mu.CommitNow = true
-	_, err = txn.Mutate(ctx, mu)
+	err = SaveData(D.DB, pb)
 	if err != nil {
+		logs.Error("Transaction Save Data fail " + err.Error())
 		return err
 	}
 	return nil

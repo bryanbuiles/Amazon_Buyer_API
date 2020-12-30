@@ -7,6 +7,7 @@ import (
 	"github.com/bryanbuiles/tecnical_interview/api/v1/models"
 	"github.com/bryanbuiles/tecnical_interview/internal/database"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
+	"github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 type filterConsumerStruct struct {
@@ -41,18 +42,17 @@ func filterConsumer(DB *database.DgraphClient, consumerData []models.Consumer) (
 		logs.Error("Unmarshall fails at filterConsumer " + err.Error())
 		return nil, err
 	}
-	var _consumers []models.Consumer
 	allconsumerExist := consumerExist.AllData
-	for _, values := range consumerData {
+	for index, values := range consumerData {
 		for _, ValuesExists := range allconsumerExist {
 			if values.ID == ValuesExists.ID {
 				values.UID = ValuesExists.UID
+				consumerData[index] = values
 				break
 			}
 		}
-		_consumers = append(_consumers, values)
 	}
-	return _consumers, nil
+	return consumerData, nil
 }
 
 func filterProduct(DB *database.DgraphClient, productData []models.Product) ([]models.Product, error) {
@@ -78,18 +78,17 @@ func filterProduct(DB *database.DgraphClient, productData []models.Product) ([]m
 		logs.Error("Unmarshall fails at filterProduct " + err.Error())
 		return nil, err
 	}
-	var _products []models.Product
 	allconsumerExist := productExist.AllData
-	for _, values := range productData {
+	for index, values := range productData {
 		for _, ValuesExists := range allconsumerExist {
 			if values.ID == ValuesExists.ID {
 				values.UID = ValuesExists.UID
+				productData[index] = values
 				break
 			}
 		}
-		_products = append(_products, values)
 	}
-	return _products, nil
+	return productData, nil
 }
 
 func filterTransaction(DB *database.DgraphClient, transactionData []models.Transaction) ([]models.Transaction, error) {
@@ -126,4 +125,81 @@ func filterTransaction(DB *database.DgraphClient, transactionData []models.Trans
 		}
 	}
 	return transactionData, nil
+}
+
+// SaveData to save data in dgraph
+func SaveData(DB *database.DgraphClient, datajson []byte) error {
+	ctx := context.Background()
+	txn := DB.NewTxn()
+	mu := &api.Mutation{
+		SetJson:   datajson,
+		CommitNow: true,
+	}
+	_, err := txn.Mutate(ctx, mu)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TransactionUIDS function to take uids for consumer and products
+func TransactionUIDS(DB *database.DgraphClient, consumerMap map[string]string, productMap map[string]string) (map[string]string, map[string]string, error) {
+	ctx := context.Background()
+	q := `{
+			allData(func: type(Consumer)) {
+				uid
+				id
+			}
+		}`
+
+	txn := DB.NewTxn()
+	defer txn.Discard(ctx)
+	response, err := txn.Query(ctx, q)
+	if err != nil {
+		logs.Error("Transaction fails at TransactionUIDS " + err.Error())
+		return nil, nil, err
+	}
+	var consumerData *filterDataResponse
+
+	err = json.Unmarshal([]byte(response.Json), &consumerData)
+	if err != nil {
+		logs.Error("Unmarshall consumer fails at TransactionUIDS " + err.Error())
+		return nil, nil, err
+	}
+	allconsumer := consumerData.AllData
+	for keys := range consumerMap {
+		for _, values := range allconsumer {
+			if keys == values.ID {
+				consumerMap[keys] = values.UID
+				break
+			}
+		}
+	}
+	q = `{
+		allData(func: type(Product)) {
+			uid
+			id
+		}
+	}`
+	var ProductData *filterDataResponse
+	response, err = txn.Query(ctx, q)
+	if err != nil {
+		logs.Error("Transaction fails at TransactionUIDS " + err.Error())
+		return nil, nil, err
+	}
+	err = json.Unmarshal([]byte(response.Json), &ProductData)
+	if err != nil {
+		logs.Error("Unmarshall product fails at TransactionUIDS " + err.Error())
+		return nil, nil, err
+	}
+	allProducts := ProductData.AllData
+	for keys := range productMap {
+		for _, values := range allProducts {
+			if keys == values.ID {
+				productMap[keys] = values.UID
+				break
+			}
+		}
+	}
+	return consumerMap, productMap, nil
 }

@@ -17,15 +17,21 @@ func (c *WebServices) DataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	productMap, err := c.data.ProductData(Date)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		m := map[string]interface{}{"message": "error pasing data in Product"}
+		_ = json.NewEncoder(w).Encode(m)
+		return
+	}
 	err = c.data.TransactionData(Date, consumerMap, productMap)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		m := map[string]interface{}{"message": "error pasing data"}
+		m := map[string]interface{}{"message": "error pasing data in Transaction"}
 		_ = json.NewEncoder(w).Encode(m)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	resMap := map[string]interface{}{"msg": "Data saved successfully"}
+	resMap := map[string]interface{}{"message": "Data saved successfully"}
 	_ = json.NewEncoder(w).Encode(resMap)
 
 }
