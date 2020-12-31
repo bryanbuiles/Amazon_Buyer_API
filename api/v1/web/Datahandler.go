@@ -1,4 +1,4 @@
-package gateway
+package v1
 
 import (
 	"encoding/json"
@@ -34,4 +34,24 @@ func (c *WebServices) DataHandler(w http.ResponseWriter, r *http.Request) {
 	resMap := map[string]interface{}{"message": "Data saved successfully"}
 	_ = json.NewEncoder(w).Encode(resMap)
 
+}
+
+//GetAllBuyerHandler handler to get all buyer
+func (c *WebServices) GetAllBuyerHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	response, err := c.data.GetAllBuyers()
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		m := map[string]interface{}{"message": "error getting all buyers"}
+		_ = json.NewEncoder(w).Encode(m)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(response.Json)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		m := map[string]interface{}{"message": "error getting all buyers"}
+		_ = json.NewEncoder(w).Encode(m)
+		return
+	}
 }

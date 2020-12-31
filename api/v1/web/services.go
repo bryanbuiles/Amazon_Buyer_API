@@ -1,12 +1,13 @@
-package gateway
+package v1
 
 import (
+	v1 "github.com/bryanbuiles/tecnical_interview/api/v1/gateway"
 	"github.com/bryanbuiles/tecnical_interview/internal/database"
 )
 
 // Services ...
 type Services struct {
-	data AllDataGateway
+	data v1.AllDataGateway
 }
 
 // WebServices .for the users
@@ -18,7 +19,7 @@ type WebServices struct {
 func NewServices() Services {
 	client := database.NewClient()
 	return Services{
-		data: &DataBaseService{DB: client},
+		data: &v1.DataBaseService{DB: client},
 	}
 }
 

@@ -1,6 +1,7 @@
-package gateway
+package v1
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"github.com/bryanbuiles/tecnical_interview/api/v1/models"
 	"github.com/bryanbuiles/tecnical_interview/internal/database"
 	"github.com/bryanbuiles/tecnical_interview/internal/logs"
+	"github.com/dgraph-io/dgo/v200/protos/api"
 )
 
 // AllDataGateway al methodos of Buyers user
@@ -20,11 +22,16 @@ type AllDataGateway interface {
 	ConsumerData(date string) (map[string]string, error)
 	ProductData(date string) (map[string]string, error)
 	TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error
+	GetAllBuyers() (*api.Response, error)
 }
 
 // DataBaseService retrieve database conection
 type DataBaseService struct {
 	DB *database.DgraphClient
+}
+
+type filterDataResponse struct {
+	AllData []filterConsumerStruct `json:"allData"`
 }
 
 const (
@@ -206,4 +213,25 @@ func (D *DataBaseService) TransactionData(date string, consumerMap map[string]st
 		return err
 	}
 	return nil
+}
+
+//GetAllBuyers Get all buyers by endpoint
+func (D *DataBaseService) GetAllBuyers() (*api.Response, error) {
+	ctx := context.Background()
+	q := `{
+		allBuyers(func: type(Consumer)) {
+			id
+			name
+			age
+		}
+	}`
+	txn := D.DB.NewTxn()
+	defer txn.Discard(ctx)
+	response, err := txn.Query(ctx, q)
+	if err != nil {
+		logs.Error("Transaction fails at GetAllBuyers " + err.Error())
+		return nil, err
+	}
+	return response, nil
+
 }

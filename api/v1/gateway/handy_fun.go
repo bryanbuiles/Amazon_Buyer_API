@@ -1,4 +1,4 @@
-package gateway
+package v1
 
 import (
 	"context"
@@ -13,10 +13,6 @@ import (
 type filterConsumerStruct struct {
 	UID string `json:"uid"`
 	ID  string `json:"id"`
-}
-
-type filterDataResponse struct {
-	AllData []filterConsumerStruct `json:"allData"`
 }
 
 func filterConsumer(DB *database.DgraphClient, consumerData []models.Consumer) ([]models.Consumer, error) {
