@@ -23,6 +23,7 @@ type AllDataGateway interface {
 	ProductData(date string) (map[string]string, error)
 	TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error
 	GetAllBuyers() (*api.Response, error)
+	GetBuyerInfo(id string) (*api.Response, error)
 }
 
 // DataBaseService retrieve database conection
@@ -234,4 +235,47 @@ func (D *DataBaseService) GetAllBuyers() (*api.Response, error) {
 	}
 	return response, nil
 
+}
+
+// GetBuyerInfo get buyer information
+func (D *DataBaseService) GetBuyerInfo(id string) (*api.Response, error) {
+	ctx := context.Background()
+	variables := map[string]string{"$id": id}
+	q := `query BuyerData($id: string) {
+			BuyerInfo(func: eq(id, $id)) {
+				id
+				name
+				purchases : ~buyerID {
+					transactionID : bid as id
+					sameIP as ip
+					products : productIDs {
+						id
+						name
+						price
+					}
+				}
+			}
+			sameIP(func: eq(ip, val(sameIP))) @filter(NOT eq(id, val(bid))) @normalize {
+				ip : ip
+				buyerID {
+					id : id
+			  		name : name
+			}
+		  }
+		  recomendations(func: eq(ip, val(sameIP)), first: 2) @normalize {
+			productIDs {
+				id : id
+				name : name
+				price : price
+			}
+		  }
+	}`
+	txn := D.DB.NewTxn()
+	defer txn.Discard(ctx)
+	response, err := txn.QueryWithVars(ctx, q, variables)
+	if err != nil {
+		logs.Error("Transaction fails at GetBuyerInfo " + err.Error())
+		return nil, err
+	}
+	return response, nil
 }

@@ -21,5 +21,6 @@ func Routes() *chi.Mux {
 	)
 	mux.Get("/load", star.DataHandler)
 	mux.Get("/buyer", star.GetAllBuyerHandler)
+	mux.Get("/buyer/{buyerID}", star.GetBuyerInfoHandler)
 	return mux
 }

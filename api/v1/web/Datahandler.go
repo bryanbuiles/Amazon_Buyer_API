@@ -3,6 +3,8 @@ package v1
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/go-chi/chi"
 )
 
 // DataHandler ...
@@ -51,6 +53,27 @@ func (c *WebServices) GetAllBuyerHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		m := map[string]interface{}{"message": "error getting all buyers"}
+		_ = json.NewEncoder(w).Encode(m)
+		return
+	}
+}
+
+//GetBuyerInfoHandler handler to getbuyer info
+func (c *WebServices) GetBuyerInfoHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	id := chi.URLParam(r, "buyerID")
+	response, err := c.data.GetBuyerInfo(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		m := map[string]interface{}{"message": "error getting buyer information"}
+		_ = json.NewEncoder(w).Encode(m)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(response.Json)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		m := map[string]interface{}{"message": "error getting buyer information"}
 		_ = json.NewEncoder(w).Encode(m)
 		return
 	}
