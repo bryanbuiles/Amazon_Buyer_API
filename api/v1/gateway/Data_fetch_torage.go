@@ -262,7 +262,7 @@ func (D *DataBaseService) GetBuyerInfo(id string) (*api.Response, error) {
 			  		name : name
 			}
 		  }
-		  recomendations(func: eq(ip, val(sameIP)), first: 2) @normalize {
+		  recomendations(func: eq(ip, val(sameIP)), first: 2) @filter(NOT eq(id, val(bid))) @normalize {
 			productIDs {
 				id : id
 				name : name
