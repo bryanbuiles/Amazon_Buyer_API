@@ -8,3 +8,10 @@ type Consumer struct {
 	Age   int      `json:"age,omitempty"`
 	DType []string `json:"dgraph.type,omitempty"`
 }
+
+//ChannelStrutc ...
+type ChannelStrutc struct {
+	MapHash map[string]string
+	DType   string
+	Err     error
+}

@@ -138,9 +138,10 @@ func SaveData(DB *database.DgraphClient, datajson []byte) error {
 	return nil
 }
 
-// TransactionUIDS function to take uids for consumer and products
-func TransactionUIDS(DB *database.DgraphClient, consumerMap map[string]string, productMap map[string]string) (map[string]string, map[string]string, error) {
+// TransactionUIDSConsumer function to take uids for consumer and products
+func TransactionUIDSConsumer(DB *database.DgraphClient, consumerMap map[string]string, channel chan models.ChannelStrutc) {
 	ctx := context.Background()
+	var result models.ChannelStrutc
 	q := `{
 			allData(func: type(Consumer)) {
 				uid
@@ -152,15 +153,21 @@ func TransactionUIDS(DB *database.DgraphClient, consumerMap map[string]string, p
 	defer txn.Discard(ctx)
 	response, err := txn.Query(ctx, q)
 	if err != nil {
-		logs.Error("Transaction fails at TransactionUIDS " + err.Error())
-		return nil, nil, err
+		logs.Error("Transaction fails at TransactionUIDSConsumer " + err.Error())
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	var consumerData *filterDataResponse
 
 	err = json.Unmarshal([]byte(response.Json), &consumerData)
 	if err != nil {
-		logs.Error("Unmarshall consumer fails at TransactionUIDS " + err.Error())
-		return nil, nil, err
+		logs.Error("Unmarshall consumer fails at TransactionUIDSConsumer " + err.Error())
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	allconsumer := consumerData.AllData
 	for keys := range consumerMap {
@@ -171,22 +178,40 @@ func TransactionUIDS(DB *database.DgraphClient, consumerMap map[string]string, p
 			}
 		}
 	}
-	q = `{
+	result.MapHash = consumerMap
+	result.DType = "Consumer"
+	result.Err = nil
+	channel <- result
+}
+
+//TransactionUIDSProducts ...
+func TransactionUIDSProducts(DB *database.DgraphClient, productMap map[string]string, channel chan models.ChannelStrutc) {
+	ctx := context.Background()
+	var result models.ChannelStrutc
+	txn := DB.NewTxn()
+	defer txn.Discard(ctx)
+	q := `{
 		allData(func: type(Product)) {
 			uid
 			id
 		}
 	}`
 	var ProductData *filterDataResponse
-	response, err = txn.Query(ctx, q)
+	response, err := txn.Query(ctx, q)
 	if err != nil {
-		logs.Error("Transaction fails at TransactionUIDS " + err.Error())
-		return nil, nil, err
+		logs.Error("Transaction fails at TransactionUIDSProducts " + err.Error())
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	err = json.Unmarshal([]byte(response.Json), &ProductData)
 	if err != nil {
-		logs.Error("Unmarshall product fails at TransactionUIDS " + err.Error())
-		return nil, nil, err
+		logs.Error("Unmarshall product fails at TransactionUIDSProducts " + err.Error())
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	allProducts := ProductData.AllData
 	for keys := range productMap {
@@ -197,5 +222,8 @@ func TransactionUIDS(DB *database.DgraphClient, consumerMap map[string]string, p
 			}
 		}
 	}
-	return consumerMap, productMap, nil
+	result.MapHash = productMap
+	result.DType = "Products"
+	result.Err = nil
+	channel <- result
 }

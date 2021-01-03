@@ -19,8 +19,8 @@ import (
 
 // AllDataGateway al methodos of Buyers user
 type AllDataGateway interface {
-	ConsumerData(date string) (map[string]string, error)
-	ProductData(date string) (map[string]string, error)
+	ConsumerData(date string, channel chan models.ChannelStrutc)
+	ProductData(date string, channel chan models.ChannelStrutc)
 	TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error
 	GetAllBuyers() (*api.Response, error)
 	GetBuyerInfo(id string) (*api.Response, error)
@@ -54,14 +54,17 @@ func conversorToUnix(date string) string {
 }
 
 // ConsumerData ...
-func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
+func (D *DataBaseService) ConsumerData(date string, channel chan models.ChannelStrutc) {
 
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "buyers?date=" + date)
-
+	var result models.ChannelStrutc
 	if err != nil {
 		logs.Error("http get fail at COnsumerData " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	defer res.Body.Close()
 	var _consumer []models.Consumer
@@ -69,7 +72,10 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 	err = json.NewDecoder(res.Body).Decode(&_consumer)
 	if err != nil {
 		logs.Error("Decode buyers fails " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 
 	mapConsumer := make(map[string]string)
@@ -90,24 +96,36 @@ func (D *DataBaseService) ConsumerData(date string) (map[string]string, error) {
 	pb, err := json.Marshal(consumers)
 	if err != nil {
 		logs.Error("Consumer marshall fail at ConsumerData " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	err = SaveData(D.DB, pb)
 	if err != nil {
 		logs.Error("Consumer Save Data fail " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
-	return mapConsumer, nil
+	result.MapHash = mapConsumer
+	result.DType = "Consumer"
+	result.Err = nil
+	channel <- result
 }
 
 // ProductData ...
-func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
+func (D *DataBaseService) ProductData(date string, channel chan models.ChannelStrutc) {
 	date = conversorToUnix(date)
 	res, err := http.Get(URL + "products?date=" + date)
-
+	var result models.ChannelStrutc
 	if err != nil {
 		logs.Error("http get fail at productData " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	defer res.Body.Close()
 	resCsv := csv.NewReader(res.Body)
@@ -130,7 +148,10 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 		}
 		if err != nil {
 			logs.Error("Fail read lines in csv " + err.Error())
-			return nil, err
+			result.MapHash = nil
+			result.Err = err
+			channel <- result
+			return
 		}
 	}
 	//filter data
@@ -141,22 +162,47 @@ func (D *DataBaseService) ProductData(date string) (map[string]string, error) {
 	pb, err := json.Marshal(products)
 	if err != nil {
 		logs.Error("Product marshall fail at ConsumerData " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
 	err = SaveData(D.DB, pb)
 	if err != nil {
 		logs.Error("Product Save Data fail " + err.Error())
-		return nil, err
+		result.MapHash = nil
+		result.Err = err
+		channel <- result
+		return
 	}
-	return mapProduct, nil
+	result.MapHash = mapProduct
+	result.DType = "Products"
+	result.Err = nil
+	channel <- result
 }
 
 // TransactionData ...
 func (D *DataBaseService) TransactionData(date string, consumerMap map[string]string, productMap map[string]string) error {
-	consumerMap, productMap, err := TransactionUIDS(D.DB, consumerMap, productMap)
-	if err != nil {
-		logs.Error("TransactionUIDS fail " + err.Error())
-		return err
+	// concurrency
+	channel := make(chan models.ChannelStrutc, 2)
+	go TransactionUIDSConsumer(D.DB, consumerMap, channel)
+	go TransactionUIDSProducts(D.DB, productMap, channel)
+	data1 := <-channel
+	data2 := <-channel
+	if data1.Err != nil {
+		logs.Error("TransactionUIDS fail " + data1.Err.Error())
+		return data1.Err
+	}
+	if data2.Err != nil {
+		logs.Error("TransactionUIDS fail " + data2.Err.Error())
+		return data2.Err
+	}
+	if data1.DType == "Products" {
+		productMap = data1.MapHash
+		consumerMap = data2.MapHash
+	} else {
+		productMap = data2.MapHash
+		consumerMap = data1.MapHash
 	}
 
 	date = conversorToUnix(date)
