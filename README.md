@@ -1,6 +1,6 @@
 # Amazon Buyer API
 
-Amazon Api buyer is an API where you can display the purchases of an user, see all their products and get some some recommendations for future purchases. The API takes the information from the amazon API in a determined day and saved it in the database.
+Amazon Api buyer is an API where you can display the purchases of an user, see all their products and get some recommendations for future purchases. The API takes the information from the amazon API in a given day and saved it in the database.
 
 The api is still under development and the database is not populate with movies yet.
 
@@ -35,15 +35,15 @@ This web-application was interpreted/tested on Ubuntu 20.04 LTS using go (versio
 ## Run api locally
 
 - Clone this repository: `git clone "https://github.com/bryanbuiles/Amazon_Buyer_API.git"`
-- Access to cmd folder: `cd Amazon-Buyer-API/cmd`
+- Access to cmd folder: `cd Amazon_Buyer_API/cmd`
 - Update dependecies
   ```
-  ~/Amazon-Buyer-API$ go mod tidy
+  ~/Amazon_Buyer_API$ go mod tidy
   ```
 - Run Dgraph database: https://dgraph.io/docs/get-started/
 - Run the api:
   ```
-  ~/Amazon-Buyer-API$ go run main.go server.go
+  ~/Amazon_Buyer_API$ go run main.go server.go
   ```
 - Request the endpoints with curl or postmant:
 
