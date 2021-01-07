@@ -8,3 +8,4 @@ type Product struct {
 	Price int      `json:"price,omitempty"`
 	DType []string `json:"dgraph.type,omitempty"`
 }
+

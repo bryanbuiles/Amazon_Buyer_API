@@ -232,14 +232,12 @@ func (D *DataBaseService) TransactionData(date string, consumerMap map[string]st
 		transactionElements := strings.Split(element, "\x00")
 		transaction.ID = transactionElements[0]
 		transactionsUIDS.UID = consumerMap[transactionElements[1]]
-		transactionsUIDS.DType = []string{"Consumer"}
 		transaction.BuyerID = []models.UIDTransaction{transactionsUIDS}
 		transaction.IP = transactionElements[2]
 		transaction.Device = transactionElements[3]
 		productsList := strings.Split(transactionElements[4][1:len(transactionElements[4])-1], ",")
 		for _, values := range productsList {
 			transactionsUIDS.UID = productMap[values]
-			transactionsUIDS.DType = []string{"Product"}
 			transactionsUIDSListProduct = append(transactionsUIDSListProduct, transactionsUIDS)
 		}
 		transaction.ProductIDs = transactionsUIDSListProduct

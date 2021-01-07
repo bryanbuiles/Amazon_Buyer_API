@@ -1,4 +1,4 @@
-package v1
+package webdata
 
 import (
 	v1 "github.com/bryanbuiles/tecnical_interview/api/v1/gateway"

@@ -13,6 +13,5 @@ type Transaction struct {
 
 // UIDTransaction ...
 type UIDTransaction struct {
-	UID   string   `json:"uid"`
-	DType []string `json:"dgraph.type,omitempty"`
+	UID string `json:"uid"`
 }

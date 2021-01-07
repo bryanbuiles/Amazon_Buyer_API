@@ -1,4 +1,4 @@
-package v1
+package webdata
 
 import (
 	"encoding/json"
@@ -10,6 +10,7 @@ import (
 
 // DataHandler ...
 func (c *WebServices) DataHandler(w http.ResponseWriter, r *http.Request) {
+
 	w.Header().Set("Content-Type", "application/json")
 	Date := r.URL.Query().Get("date") // query url parameter
 	// concurrency
