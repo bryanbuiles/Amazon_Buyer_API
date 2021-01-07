@@ -34,7 +34,7 @@ This web-application was interpreted/tested on Ubuntu 20.04 LTS using go (versio
 
 ## Run api locally
 
-- Clone this repository: `git clone "https://github.com/bryanbuiles/Amazon-Buyer-API.git"`
+- Clone this repository: `git clone "https://github.com/bryanbuiles/Amazon_Buyer_API.git"`
 - Access to cmd folder: `cd Amazon-Buyer-API/cmd`
 - Update dependecies
   ```
